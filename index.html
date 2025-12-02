@@ -19,7 +19,7 @@
             margin: 0;
             display: flex;
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden; /* 防止捲動 */
         }
         
         /* Sidebar Navigation */
@@ -31,6 +31,7 @@
             flex-direction: column;
             overflow-y: auto;
             box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
         }
         h1 { 
             font-size: 22px; 
@@ -101,6 +102,7 @@
             margin: 10px;
             font-weight: bold;
             transition: 0.2s;
+            outline: none;
         }
         button.action-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--primary); }
         input[type="number"], input[type="text"] {
@@ -109,7 +111,6 @@
         .score-board { font-size: 20px; color: var(--secondary); font-weight: bold; margin: 15px 0; }
 
         /* Game Specific Styles */
-        
         /* Tic Tac Toe */
         .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px auto; width: 240px; }
         .cell {
@@ -150,7 +151,7 @@
         /* Dodge Game */
         #dodge-canvas { background: #1a1a2e; border-bottom: 5px solid var(--secondary); }
         
-        /* Mobile Controls for Snake/Dodge */
+        /* Mobile Controls */
         .mobile-controls { margin-top: 15px; display: none; }
         @media (max-width: 768px) { .mobile-controls { display: block; } }
 
@@ -184,6 +185,7 @@
             <h2 style="font-size: 36px; color: var(--primary);">歡迎來到 WAYNA的遊戲天堂</h2>
             <p style="font-size: 18px;">這裡集合了 10 款輕鬆的小遊戲，適合放鬆心情。</p>
             <p>👈 請點擊左側選單開始遊玩！</p>
+            <p style="color: #aaa; font-size: 14px;">提示：貪食蛇與太空閃避球請使用鍵盤方向鍵操作。</p>
         </div>
 
         <div id="game1" class="game-section">
@@ -215,7 +217,7 @@
 
         <div id="game4" class="game-section">
             <h2>5秒手速王</h2>
-            <div style="width: 150px; height: 150px; background: var(--secondary); border-radius: 50%; margin: 20px auto; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size: 24px;" onclick="clickCount()">
+            <div style="width: 150px; height: 150px; background: var(--secondary); border-radius: 50%; margin: 20px auto; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size: 24px; user-select: none;" onmousedown="clickCount()">
                 點我
             </div>
             <div class="score-board">時間: <span id="click-time">5.0</span> | 次數: <span id="click-score">0</span></div>
@@ -224,7 +226,7 @@
 
         <div id="game5" class="game-section">
             <h2>極限反應力</h2>
-            <div id="reflex-box" style="width:100%; height:150px; background:#444; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onmousedown="reflexClick()">
+            <div id="reflex-box" style="width:100%; height:150px; background:#444; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; user-select: none;" onmousedown="reflexClick()">
                 點擊開始
             </div>
             <div class="score-board" id="reflex-msg"></div>
@@ -235,7 +237,7 @@
             <h2>經典貪食蛇</h2>
             <div class="score-board">分數: <span id="snake-score">0</span></div>
             <canvas id="snake-canvas" width="300" height="300"></canvas>
-            <p>使用鍵盤方向鍵控制 (電腦版) 或下方按鈕</p>
+            <p>使用鍵盤 ⬆️⬇️⬅️➡️ 控制</p>
             <div class="mobile-controls">
                 <button class="action-btn" onclick="changeSnakeDir('UP')">⬆️</button><br>
                 <button class="action-btn" onclick="changeSnakeDir('LEFT')">⬅️</button>
@@ -262,7 +264,7 @@
 
         <div id="game9" class="game-section">
             <h2>太空閃避球</h2>
-            <p>左右移動躲避掉落的隕石！</p>
+            <p>使用鍵盤 ⬅️ ➡️ 移動躲避隕石！</p>
             <canvas id="dodge-canvas" width="300" height="300"></canvas>
             <div class="score-board">存活時間: <span id="dodge-score">0</span></div>
             <div class="mobile-controls">
@@ -286,14 +288,12 @@
     <script>
         // --- System Management ---
         let activeGame = 'welcome';
-        let intervals = []; // Store all intervals to clear them when switching games
+        let intervals = []; 
 
         function switchGame(id) {
-            // Stop all running game loops
             intervals.forEach(clearInterval);
             intervals = [];
             
-            // UI Switch
             document.querySelectorAll('.game-section').forEach(el => el.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             
@@ -302,17 +302,44 @@
             if(btnIndex >= 0) document.querySelectorAll('.nav-btn')[btnIndex].classList.add('active');
 
             activeGame = id;
+            document.activeElement.blur(); // Remove focus
             
-            // Special initialization for some games
             if(id === 'game7') createMoleGrid();
             if(id === 'game8') initMemory();
             if(id === 'game10') initMath();
         }
 
-        // --- Game 1: Tic Tac Toe (PvE) ---
+        // --- GLOBAL KEYBOARD HANDLER ---
+        window.addEventListener('keydown', function(e) {
+            // Prevent scroll
+            if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].indexOf(e.key) > -1) {
+                if(activeGame === 'game6' || activeGame === 'game9') {
+                    e.preventDefault(); 
+                }
+            }
+            // Snake Controls
+            if(activeGame === 'game6') {
+                if(e.key === 'ArrowLeft') changeSnakeDir('LEFT');
+                if(e.key === 'ArrowUp') changeSnakeDir('UP');
+                if(e.key === 'ArrowRight') changeSnakeDir('RIGHT');
+                if(e.key === 'ArrowDown') changeSnakeDir('DOWN');
+            }
+            // Dodge Controls
+            if(activeGame === 'game9') {
+                if(e.key === 'ArrowLeft') dodgeMove(-1);
+                if(e.key === 'ArrowRight') dodgeMove(1);
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            if(activeGame === 'game9') {
+                if(e.key === 'ArrowLeft' || e.key === 'ArrowRight') dodgeStop();
+            }
+        });
+
+        // --- Game 1: Tic Tac Toe ---
         let tttBoard = Array(9).fill(null);
         let tttPlayer = 'X';
-        
         function initTTT() {
             const board = document.getElementById('ttt-board');
             board.innerHTML = '';
@@ -324,20 +351,15 @@
                 board.appendChild(cell);
             });
         }
-
         function playerMove(idx) {
             if(tttBoard[idx] || checkWin(tttBoard)) return;
             tttBoard[idx] = 'X';
             initTTT();
-            
             if(!checkWin(tttBoard) && tttBoard.includes(null)) {
                 document.getElementById('ttt-status').innerText = "電腦思考中...";
                 setTimeout(computerMove, 500);
-            } else {
-                checkResult();
-            }
+            } else checkResult();
         }
-
         function computerMove() {
             let available = tttBoard.map((v, i) => v === null ? i : null).filter(v => v !== null);
             if(available.length > 0) {
@@ -347,7 +369,6 @@
                 checkResult();
             }
         }
-
         function checkWin(board) {
             const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
             for(let w of wins) {
@@ -355,7 +376,6 @@
             }
             return null;
         }
-
         function checkResult() {
             let winner = checkWin(tttBoard);
             let status = document.getElementById('ttt-status');
@@ -363,7 +383,6 @@
             else if(!tttBoard.includes(null)) status.innerText = "🤝 平手！";
             else status.innerText = "輪到你 (X)";
         }
-
         function resetTTT() { tttBoard = Array(9).fill(null); initTTT(); document.getElementById('ttt-status').innerText = "輪到你 (X)"; }
         initTTT();
 
@@ -388,7 +407,6 @@
             let res = "平手";
             if((user=='✊'&&cpu=='✌')||(user=='✋'&&cpu=='✊')||(user=='✌'&&cpu=='✋')) { res="你贏了"; rpsUserScore++; }
             else if(user!==cpu) { res="電腦贏"; rpsCpuScore++; }
-            
             document.getElementById('rps-result').innerText = `你 ${user} vs ${cpu} 電腦 -> ${res}`;
             document.getElementById('rps-score').innerText = `你 ${rpsUserScore} - ${rpsCpuScore} 電腦`;
         }
@@ -431,7 +449,7 @@
                     box.onmousedown = null;
                 };
             }, delay);
-            intervals.push(setInterval(()=>{}, 1000)); // Dummy to catch clearAll
+            intervals.push(setInterval(()=>{}, 1000)); 
         }
         function reflexClick() { 
             if(document.getElementById('reflex-box').style.background === 'rgb(255, 46, 99)') {
@@ -440,7 +458,7 @@
             }
         }
 
-        // --- Game 6: Snake ---
+        // --- Game 6: Snake (FIXED) ---
         const cvs = document.getElementById('snake-canvas');
         const ctx = cvs.getContext('2d');
         const box = 15;
@@ -451,28 +469,25 @@
 
         function startSnake() {
             snake = [{x: 9*box, y: 10*box}];
-            food = { x: Math.floor(Math.random()*19+1)*box, y: Math.floor(Math.random()*19+1)*box };
-            d = null;
+            food = { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box };
+            d = "RIGHT"; // FIX: Set default direction so it moves immediately
             snakeScore = 0;
             document.getElementById('snake-score').innerText = 0;
+            
+            intervals.forEach(clearInterval);
+            intervals = [];
+            
             let game = setInterval(drawSnake, 100);
             intervals.push(game);
+            window.focus();
         }
 
         function changeSnakeDir(dir) {
             if(dir == 'LEFT' && d != 'RIGHT') d = 'LEFT';
-            if(dir == 'UP' && d != 'DOWN') d = 'UP';
-            if(dir == 'RIGHT' && d != 'LEFT') d = 'RIGHT';
-            if(dir == 'DOWN' && d != 'UP') d = 'DOWN';
+            else if(dir == 'UP' && d != 'DOWN') d = 'UP';
+            else if(dir == 'RIGHT' && d != 'LEFT') d = 'RIGHT';
+            else if(dir == 'DOWN' && d != 'UP') d = 'DOWN';
         }
-
-        document.addEventListener('keydown', e => {
-            if(activeGame !== 'game6') return;
-            if(e.keyCode == 37) changeSnakeDir('LEFT');
-            if(e.keyCode == 38) changeSnakeDir('UP');
-            if(e.keyCode == 39) changeSnakeDir('RIGHT');
-            if(e.keyCode == 40) changeSnakeDir('DOWN');
-        });
 
         function drawSnake() {
             ctx.fillStyle = '#222831';
@@ -501,7 +516,7 @@
                 document.getElementById('snake-score').innerText = snakeScore;
                 food = { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box };
             }else{
-                if(d) snake.pop();
+                snake.pop();
             }
 
             let newHead = { x: snakeX, y: snakeY };
@@ -511,9 +526,13 @@
                 alert("遊戲結束！得分: " + snakeScore);
             }
             
-            if(d) snake.unshift(newHead);
+            snake.unshift(newHead);
         }
+        
         function collision(head, array){
+            // Start checking from 0 only if moving? 
+            // Better logic: if head overlaps any existing body part.
+            // But 'array' here is the OLD snake body before move.
             for(let i = 0; i < array.length; i++){
                 if(head.x == array[i].x && head.y == array[i].y) return true;
             }
@@ -524,7 +543,6 @@
         let moleScore = 0;
         let moleTime = 30;
         let lastHole;
-
         function createMoleGrid() {
             const grid = document.getElementById('mole-grid');
             grid.innerHTML = '';
@@ -537,7 +555,6 @@
                 grid.appendChild(d);
             }
         }
-
         function randomHole() {
             const holes = document.querySelectorAll('.mole-hole');
             const idx = Math.floor(Math.random() * holes.length);
@@ -546,7 +563,6 @@
             lastHole = hole;
             return hole;
         }
-
         function peep() {
             const time = 500 + Math.random() * 500;
             const hole = randomHole();
@@ -556,7 +572,6 @@
                 if (moleTime > 0) peep();
             }, time);
         }
-
         function startMole() {
             moleScore = 0; moleTime = 30;
             document.getElementById('mole-score').innerText = 0;
@@ -572,7 +587,6 @@
             }, 1000);
             intervals.push(timer);
         }
-
         function bonk(idx) {
             const hole = document.getElementById(`hole-${idx}`);
             if(hole.classList.contains('active')) {
@@ -587,7 +601,6 @@
         let hasFlippedCard = false;
         let lockBoard = false;
         let firstCard, secondCard;
-
         function initMemory() {
             const grid = document.getElementById('memory-grid');
             grid.innerHTML = '';
@@ -602,31 +615,23 @@
             });
             hasFlippedCard = false; lockBoard = false;
         }
-
         function flipCard() {
             if (lockBoard) return;
             if (this === firstCard) return;
             this.classList.add('flipped');
-            if (!hasFlippedCard) {
-                hasFlippedCard = true;
-                firstCard = this;
-                return;
-            }
+            if (!hasFlippedCard) { hasFlippedCard = true; firstCard = this; return; }
             secondCard = this;
             checkForMatch();
         }
-
         function checkForMatch() {
             let isMatch = firstCard.dataset.framework === secondCard.dataset.framework;
             isMatch ? disableCards() : unflipCards();
         }
-
         function disableCards() {
             firstCard.classList.add('matched');
             secondCard.classList.add('matched');
             resetBoard();
         }
-
         function unflipCards() {
             lockBoard = true;
             setTimeout(() => {
@@ -635,7 +640,6 @@
                 resetBoard();
             }, 1000);
         }
-
         function resetBoard() {
             [hasFlippedCard, lockBoard] = [false, false];
             [firstCard, secondCard] = [null, null];
@@ -647,27 +651,27 @@
         let playerX = 135;
         let meteors = [];
         let dodgeScore = 0;
-        let dodgeMoving = 0;
-
+        let dodgeMoving = 0; 
         function startDodge() {
-            playerX = 135; meteors = []; dodgeScore = 0;
+            playerX = 135; meteors = []; dodgeScore = 0; dodgeMoving = 0;
+            document.getElementById('dodge-score').innerText = "0";
+            intervals.forEach(clearInterval);
+            intervals = [];
             let loop = setInterval(updateDodge, 20);
             let spawner = setInterval(() => {
-                meteors.push({x: Math.random()*280, y: -20, s: Math.random()*2+2});
+                meteors.push({x: Math.random()*280, y: -20, s: Math.random()*3+2});
                 dodgeScore++;
                 document.getElementById('dodge-score').innerText = (dodgeScore/10).toFixed(1) + "秒";
             }, 500);
             intervals.push(loop);
             intervals.push(spawner);
+            window.focus();
         }
-
         function dodgeMove(dir) { dodgeMoving = dir * 4; }
         function dodgeStop() { dodgeMoving = 0; }
-
         function updateDodge() {
             dCtx.fillStyle = '#1a1a2e';
             dCtx.fillRect(0,0,300,300);
-            
             // Player
             playerX += dodgeMoving;
             if(playerX < 0) playerX = 0;
@@ -678,7 +682,6 @@
             dCtx.lineTo(playerX, 290);
             dCtx.lineTo(playerX+20, 290);
             dCtx.fill();
-
             // Meteors
             dCtx.fillStyle = '#FF2E63';
             for(let i=0; i<meteors.length; i++) {
@@ -687,8 +690,6 @@
                 dCtx.beginPath();
                 dCtx.arc(m.x, m.y, 8, 0, Math.PI*2);
                 dCtx.fill();
-
-                // Collision
                 if(m.x > playerX-5 && m.x < playerX+25 && m.y > 270 && m.y < 290) {
                     intervals.forEach(clearInterval);
                     alert("被擊中了！存活時間: " + (dodgeScore/10).toFixed(1) + "秒");
